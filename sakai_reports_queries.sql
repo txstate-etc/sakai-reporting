@@ -129,6 +129,30 @@ and mcm.delete_flag = false and (role.role_name='instructor'
 or role.role_name = 'maintain')
 group by usermap.eid order by usermap.eid, site.createdon;
 
+-- Sites that have certain tool with filter ability by selected attributes
+
+SELECT site.SITE_ID, site.TITLE, map.EID as OWNER, site.TYPE, site.PUBLISHED, site.CREATEDON, REGISTRATION, site.MODIFIEDON, substring(REGISTRATION, INSTR(REGISTRATION,".")+1) as TOOL
+from SAKAI_SITE_TOOL tool
+inner join SAKAI_SITE site on site.SITE_ID=tool.SITE_ID
+inner join SAKAI_USER_ID_MAP map on map.USER_ID = site.CREATEDBY
+where  REGISTRATION = 'sakai.samigo'
+
+-- This is the query that used for tool stats which gives you the ability to create crosstab tables and graphs layout data by site type, accross years or accross academic terms 
+-- Those @Request.* are actually variables with user's inputs that can make the query dynamically
+-- You may run the query by replacing variables with certain data
+
+select site.SITE_ID, site.TITLE, substring(REGISTRATION,instr(REGISTRATION,".")+1) as TOOL, sitetool.REGISTRATION, academic.TITLE AS TERM, SUBSTRING(academic.ENTERPRISE_ID, -6) AS TERM_ID, 
+usermap.EID AS OWNER,site.PUBLISHED,site.TYPE,site.CREATEDON,site.MODIFIEDON, CASE WHEN TYPE='course' THEN 1  ELSE 0 END as COURSE_SITE, CASE WHEN TYPE='project' THEN 1  ELSE 0 END as PROJECT_SITE 
+from SAKAI_SITE_TOOL sitetool 
+inner join SAKAI_SITE site on site.SITE_ID = sitetool.SITE_ID
+left join CM_ACADEMIC_SESSION_T academic on site.CREATEDON between academic.START_DATE and academic.END_DATE
+inner join SAKAI_USER_ID_MAP usermap on site.CREATEDBY = usermap.USER_ID
+where site.CREATEDON is not null and  academic.ENTERPRISE_ID like 'v2.%'
+and (REGISTRATION IN (@SingleQuote.Request.islTools~) or '@Request.islTools~' = 'all')
+and (academic.TITLE IN (@SingleQuote.Request.islTerms~) or '@Request.islTerms~' = 'all')
+and (usermap.EID = '@Request.itNetID~' or  '@Request.itNetID~' = '')
+order by TERM_ID asc
+
 
 
 
